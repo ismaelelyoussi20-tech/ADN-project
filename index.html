@@ -3,257 +3,902 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>RNA Synthesia | DNA Helix Edition</title>
+<title>RNA Synthesia | Laboratorio Bioinformático</title>
 <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Outfit:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg-base: #020205;
-    --bg-surface: rgba(10, 15, 25, 0.8);
+    --bg-base: #050505;
+    --bg-surface: rgba(15, 20, 25, 0.6);
+    --bg-surface-hover: rgba(25, 30, 40, 0.8);
     --primary: #00f0ff;
+    --primary-glow: rgba(0, 240, 255, 0.4);
     --secondary: #7000ff;
-    --mutation: #ff0055;
+    --mutation: #ff0055; /* Neo-pink for mutations */
+    --mutation-glow: rgba(255, 0, 85, 0.4);
     --text-main: #f0f4f8;
     --text-muted: #8b9bb4;
-    --base-G: #10b981; --base-U: #f59e0b; --base-A: #ef4444; --base-C: #3b82f6;
-    --radius-lg: 16px; --transition: all 0.3s ease;
+    
+    /* Bases Colors */
+    --base-G: #10b981; 
+    --base-U: #f59e0b; 
+    --base-A: #ef4444; 
+    --base-C: #3b82f6; 
+    
+    /* AA Properties Colors */
+    --prop-nonpolar: #10b981;
+    --prop-polar: #3b82f6;
+    --prop-basic: #8b5cf6;
+    --prop-acidic: #ef4444;
+    --prop-stop: #64748b;
+
+    --radius-lg: 16px;
+    --radius-md: 10px;
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    font-family: 'Outfit', sans-serif; background-color: var(--bg-base); color: var(--text-main);
-    margin: 0; overflow-x: hidden;
+    font-family: 'Outfit', sans-serif;
+    background-color: var(--bg-base);
+    color: var(--text-main);
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image: 
+      radial-gradient(circle at 15% 50%, rgba(112, 0, 255, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 85% 30%, rgba(0, 240, 255, 0.08) 0%, transparent 50%);
+    background-attachment: fixed;
   }
 
-  .app-container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; display: grid; grid-template-columns: 320px 1fr; gap: 1.5rem; height: 100vh; }
-  .panel { background: var(--bg-surface); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: var(--radius-lg); padding: 1.2rem; display: flex; flex-direction: column; overflow: hidden; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg-base); }
+  ::-webkit-scrollbar-thumb { background: rgba(0, 240, 255, 0.3); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--primary); }
 
-  /* DNA HELIX VISUALIZER */
-  #dna-canvas { width: 100%; height: 250px; background: radial-gradient(circle, #0a0a15 0%, #020205 100%); border-radius: 10px; margin-bottom: 1rem; border: 1px solid rgba(0, 240, 255, 0.2); }
+  .app-container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 2rem;
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 2rem;
+  }
 
-  h1 { font-size: 1.5rem; background: linear-gradient(to right, var(--primary), var(--secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 1rem; text-align: center; }
-  h2 { font-size: 0.8rem; text-transform: uppercase; color: var(--primary); margin: 1rem 0 0.5rem; letter-spacing: 1px; }
+  @media (max-width: 1024px) {
+    .app-container { grid-template-columns: 1fr; padding: 1rem; }
+  }
 
-  .control-group { margin-bottom: 0.8rem; }
-  label { display: block; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.3rem; }
-  select, input[type="range"] { width: 100%; background: rgba(0,0,0,0.4); color: white; border: 1px solid rgba(255,255,255,0.1); padding: 0.4rem; border-radius: 5px; font-size: 0.8rem; }
+  /* Panels */
+  .panel {
+    background: var(--bg-surface);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    position: relative;
+    overflow: hidden;
+  }
 
-  #rna-input { width: 100%; height: 80px; background: #000; color: var(--primary); font-family: 'Fira Code'; padding: 0.8rem; border-radius: 8px; border: 1px solid var(--secondary); font-size: 0.9rem; resize: none; }
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  }
 
-  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; }
-  .stat-card { background: rgba(255,255,255,0.03); padding: 0.6rem; border-radius: 8px; text-align: center; border: 1px solid rgba(255,255,255,0.05); }
-  .stat-val { font-family: 'Fira Code'; font-weight: bold; color: var(--primary); font-size: 1.1rem; }
+  h1 {
+    font-size: 2.2rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    background: linear-gradient(to right, var(--primary), var(--secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+  }
 
-  .aa-grid { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 10px; }
-  .aa-card { min-width: 80px; padding: 0.6rem; background: rgba(0,0,0,0.5); border-radius: 6px; border-bottom: 3px solid transparent; font-size: 0.75rem; text-align: center; transition: 0.3s; }
-  .aa-card.active { background: var(--primary); color: #000; transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0, 240, 255, 0.4); }
+  h2 { font-size: 1.2rem; font-weight: 600; color: var(--text-main); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+  
+  /* Tabs System */
+  .tabs-header {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding-bottom: 1rem;
+  }
 
-  .btn { width: 100%; padding: 0.7rem; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 0.5rem; transition: 0.2s; font-size: 0.8rem; }
-  .btn-play { background: var(--primary); color: #000; box-shadow: 0 0 15px rgba(0, 240, 255, 0.3); }
-  .btn-mut { background: transparent; border: 1px solid var(--mutation); color: var(--mutation); }
-  .btn-mut:hover { background: var(--mutation); color: #000; }
+  .ws-tab {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-md);
+    transition: var(--transition);
+    position: relative;
+  }
 
-  ::-webkit-scrollbar { height: 4px; width: 4px; }
-  ::-webkit-scrollbar-thumb { background: var(--secondary); border-radius: 10px; }
+  .ws-tab:hover { color: var(--text-main); background: rgba(255,255,255,0.05); }
+  
+  .ws-tab.active {
+    color: var(--primary);
+    background: rgba(0, 240, 255, 0.1);
+    box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.1);
+  }
+
+  .ws-content { display: none; animation: fadeIn 0.3s ease; }
+  .ws-content.active { display: block; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* Controls */
+  .control-group { margin-bottom: 1.5rem; }
+  .control-group label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px; }
+  
+  input[type="range"] { width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; outline: none; -webkit-appearance: none; margin: 10px 0; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--primary); cursor: pointer; box-shadow: 0 0 10px var(--primary-glow); transition: var(--transition); }
+  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+  select, .input-text { width: 100%; padding: 0.8rem 1rem; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-md); color: white; font-family: 'Outfit', sans-serif; font-size: 0.95rem; outline: none; transition: var(--transition); appearance: none; }
+  select:focus, .input-text:focus { border-color: var(--primary); box-shadow: 0 0 15px rgba(0, 240, 255, 0.2); }
+
+  .flex-row { display: flex; gap: 1rem; }
+  .flex-row > * { flex: 1; }
+
+  /* Editor Area */
+  .editor-wrapper { position: relative; margin-bottom: 2rem; }
+  #rna-input { width: 100%; height: 200px; padding: 1.5rem; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-lg); color: transparent; caret-color: var(--text-main); font-family: 'Fira Code', monospace; font-size: 1.2rem; line-height: 1.6; resize: vertical; outline: none; z-index: 2; position: relative; letter-spacing: 2px; }
+  #rna-visual { position: absolute; top: 0; left: 0; width: 100%; height: 100%; padding: 1.5rem; font-family: 'Fira Code', monospace; font-size: 1.2rem; line-height: 1.6; pointer-events: none; z-index: 1; overflow-wrap: break-word; overflow-y: auto; letter-spacing: 2px; }
+
+  .base-G { color: var(--base-G); text-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
+  .base-U { color: var(--base-U); text-shadow: 0 0 8px rgba(245, 158, 11, 0.4); }
+  .base-A { color: var(--base-A); text-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
+  .base-C { color: var(--base-C); text-shadow: 0 0 8px rgba(59, 130, 246, 0.4); }
+  
+  .ribosome-active { background: rgba(255, 255, 255, 0.15); border-radius: 4px; box-shadow: 0 0 0 2px var(--primary); animation: pulse_border 0.5s infinite alternate; }
+  @keyframes pulse_border { from { box-shadow: 0 0 0 1px var(--primary); } to { box-shadow: 0 0 10px 2px var(--primary); } }
+
+  /* Canvas Visualizer */
+  #visualizer { width: 100%; height: 300px; border-radius: var(--radius-lg); background: #000; margin-bottom: 2rem; border: 1px solid rgba(255,255,255,0.05); }
+
+  /* Buttons */
+  .btn-group { display: flex; gap: 1rem; margin-top: 1rem; }
+  .btn { flex: 1; padding: 1rem; border: none; border-radius: var(--radius-md); font-family: 'Outfit', sans-serif; font-size: 1rem; font-weight: 700; cursor: pointer; transition: var(--transition); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+  .btn-play { background: linear-gradient(135deg, var(--primary), #0077ff); color: #000; box-shadow: 0 0 20px var(--primary-glow); }
+  .btn-play:hover { transform: translateY(-2px); box-shadow: 0 10px 30px var(--primary-glow); filter: brightness(1.2); }
+  .btn-stop { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+  .btn-stop:hover { background: rgba(239, 68, 68, 0.2); }
+  .btn-mut { background: rgba(255, 0, 85, 0.15); color: var(--mutation); border: 1px solid var(--mutation); }
+  .btn-mut:hover { background: var(--mutation); color: white; box-shadow: 0 0 20px var(--mutation-glow); }
+
+  /* Stats Grid */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+  .stat-card { background: rgba(0,0,0,0.4); padding: 1rem; border-radius: var(--radius-md); text-align: center; border: 1px solid rgba(255,255,255,0.05); }
+  .stat-val { font-size: 1.5rem; font-weight: 700; margin-top: 0.5rem; font-family: 'Fira Code', monospace; }
+
+  /* Amino Acid Grid */
+  .aa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; max-height: 300px; overflow-y: auto; padding-right: 10px; }
+  .aa-card { background: rgba(0,0,0,0.4); border-radius: var(--radius-md); padding: 1rem; border-left: 4px solid transparent; transition: var(--transition); position: relative; }
+  .aa-card.active { transform: scale(1.05); background: rgba(255,255,255,0.1); z-index: 10; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+  .aa-codon { font-family: 'Fira Code', monospace; font-size: 1.2rem; font-weight: 700; letter-spacing: 2px; }
+  .aa-name { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem; }
+  .aa-prop { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; margin-top: 0.5rem; }
+
+  .prop-nonpolar { border-color: var(--prop-nonpolar); }
+  .prop-nonpolar .aa-prop { background: rgba(16, 185, 129, 0.1); color: var(--prop-nonpolar); }
+  .prop-polar { border-color: var(--prop-polar); }
+  .prop-polar .aa-prop { background: rgba(59, 130, 246, 0.1); color: var(--prop-polar); }
+  .prop-basic { border-color: var(--prop-basic); }
+  .prop-basic .aa-prop { background: rgba(139, 92, 246, 0.1); color: var(--prop-basic); }
+  .prop-acidic { border-color: var(--prop-acidic); }
+  .prop-acidic .aa-prop { background: rgba(239, 68, 68, 0.1); color: var(--prop-acidic); }
+  .prop-stop { border-color: var(--prop-stop); }
+  .prop-stop .aa-prop { background: rgba(100, 116, 139, 0.1); color: var(--prop-stop); }
+
+  /* Mutations UI */
+  .mutation-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem; }
+  .mutation-card { background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); border-radius: var(--radius-md); padding: 1.2rem; display: flex; flex-direction: column; gap: 0.5rem; transition: var(--transition); }
+  .mutation-card:hover { border-color: rgba(255, 0, 85, 0.3); transform: translateY(-2px); }
+  .mutation-header { display: flex; justify-content: space-between; align-items: center; }
+  .mutation-title { font-weight: 700; color: var(--text-main); font-size: 1.1rem; }
+  .info-btn { background: rgba(255,255,255,0.1); color: var(--text-muted); border: none; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; transition: var(--transition); }
+  .info-btn:hover { background: var(--primary); color: #000; }
+  
+  .diff-viewer { background: rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.5rem; max-height: 400px; overflow-y: auto; }
+  .diff-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; font-family: 'Fira Code', monospace; font-size: 1.1rem; }
+  .diff-label { width: 100px; color: var(--text-muted); font-family: 'Outfit', sans-serif; font-size: 0.9rem; text-transform: uppercase; }
+  .diff-seq { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+  .codon-box { padding: 4px 6px; border-radius: 4px; background: rgba(255,255,255,0.05); text-align: center; }
+  .codon-box.mutated { background: rgba(255, 0, 85, 0.2); border: 1px solid var(--mutation); color: #fff; text-shadow: 0 0 5px var(--mutation); animation: pulse_border 1s infinite alternate; }
+  .codon-aa { display: block; font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+
+  /* Modals */
+  .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 1000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: var(--transition); }
+  .modal-overlay.active { opacity: 1; pointer-events: all; }
+  .modal-box { background: var(--bg-surface); border: 1px solid rgba(0, 240, 255, 0.3); border-radius: var(--radius-lg); padding: 2rem; max-width: 500px; width: 90%; transform: translateY(20px); transition: var(--transition); box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+  .modal-overlay.active .modal-box { transform: translateY(0); }
+  .modal-title { font-size: 1.5rem; color: var(--primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+  .modal-close { margin-top: 1.5rem; width: 100%; background: rgba(255,255,255,0.1); border: none; color: white; padding: 0.8rem; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; font-family: 'Outfit'; transition: var(--transition); }
+  .modal-close:hover { background: rgba(255,255,255,0.2); }
+
 </style>
 </head>
 <body>
 
 <div class="app-container">
+  
+  <!-- Left Panel: Synthesis Controls -->
   <aside class="panel">
-    <h1>🧬 BIO-TRON</h1>
-    
-    <canvas id="dna-canvas"></canvas>
+    <h1>RNA Syn<span style="color:var(--text-main)">thesia</span></h1>
+    <p style="color:var(--text-muted); font-size: 0.85rem; margin-bottom: 2rem;">Motor Bioinformático Musical v2.0</p>
 
+    <h2>⚙️ Motor de Síntesis</h2>
+    
     <div class="control-group">
-      <label>Proteína Base</label>
+      <label>Biblioteca Genética (Presets)</label>
       <select id="preset-select">
-        <option value="oxytocin">Oxitocina</option>
-        <option value="insulin">Insulina</option>
-        <option value="gfp">GFP (Fluorescente)</option>
+        <option value="oxytocin">Oxitocina (Hormona del Amor)</option>
+        <option value="insulin">Insulina (Regulación Metabólica)</option>
+        <option value="gfp">GFP (Proteína Fluorescente Verde)</option>
+        <option value="endorphin">Beta-Endorfina (Analgésico Natural)</option>
+        <option value="collagen">Colágeno Tipo I (Estructural)</option>
       </select>
     </div>
 
-    <h2>⚙️ Configuración Alfa</h2>
-    <div class="control-group">
-      <label>Velocidad de Giro (Hélice)</label>
-      <input type="range" id="param-rotation" min="1" max="10" value="3">
-    </div>
-    <div class="control-group">
-      <label>Densidad de Codones (BPM)</label>
-      <input type="range" id="bpm" min="40" max="220" value="100">
+    <div class="flex-row">
+      <div class="control-group">
+        <label>Tempo: <span id="bpm-val">120</span> BPM</label>
+        <input type="range" id="bpm" min="60" max="240" value="120">
+      </div>
+      <div class="control-group">
+        <label>División</label>
+        <select id="division">
+          <option value="0.25">Semicorcheas (1/4)</option>
+          <option value="0.5" selected>Corcheas (1/2)</option>
+          <option value="1">Negras (1)</option>
+        </select>
+      </div>
     </div>
 
-    <button id="btn-play" class="btn btn-play">INICIAR SECUENCIACIÓN</button>
-    <button id="btn-stop" class="btn" style="background:#222; color:#888;">STOP</button>
-    <button id="btn-mutate" class="btn btn-mut">RADIACIÓN ALFA</button>
+    <div class="flex-row">
+      <div class="control-group">
+        <label>Tono Base</label>
+        <select id="root-note">
+          <option value="C">Do (C)</option>
+          <option value="C#">Do# (C#)</option>
+          <option value="D">Re (D)</option>
+          <option value="D#">Re# (D#)</option>
+          <option value="E">Mi (E)</option>
+          <option value="F">Fa (F)</option>
+          <option value="F#" selected>Fa# (F#)</option>
+          <option value="G">Sol (G)</option>
+          <option value="G#">Sol# (G#)</option>
+          <option value="A">La (A)</option>
+          <option value="A#">La# (A#)</option>
+          <option value="B">Si (B)</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>Escala</label>
+        <select id="scale-type">
+          <option value="minor">Menor Natural</option>
+          <option value="major">Mayor</option>
+          <option value="dorian" selected>Dórica</option>
+          <option value="phrygian">Frigia</option>
+          <option value="lydian">Lidia</option>
+          <option value="japanese">Japonesa (In Sen)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>Timbre Sintetizador</label>
+      <select id="synth-type">
+        <option value="fm">FM Pluck (Moderno)</option>
+        <option value="sawtooth">Sierra Analógica</option>
+        <option value="sine">Senoidal Pura</option>
+        <option value="square">Onda Cuadrada (Retro)</option>
+      </select>
+    </div>
+
+    <div class="flex-row">
+      <div class="control-group">
+        <label>Reverb (Espacio)</label>
+        <input type="range" id="fx-reverb" min="0" max="1" step="0.05" value="0.6">
+      </div>
+      <div class="control-group">
+        <label>Delay (Eco)</label>
+        <input type="range" id="fx-delay" min="0" max="1" step="0.05" value="0.4">
+      </div>
+    </div>
+
+    <div class="btn-group">
+      <button id="btn-play" class="btn btn-play">▶ Sintetizar</button>
+      <button id="btn-stop" class="btn btn-stop">■ Detener</button>
+    </div>
   </aside>
 
+  <!-- Right Panel: Workspace (Tabs) -->
   <main class="panel">
-    <div class="stats-grid">
-      <div class="stat-card"><div>Estabilidad GC</div><div id="stat-gc" class="stat-val">0%</div></div>
-      <div class="stat-card"><div>Masa Molecular</div><div id="stat-weight" class="stat-val">0 Da</div></div>
+    
+    <div class="tabs-header">
+      <button class="ws-tab active" data-target="ws-sequencer">🧬 Secuenciador</button>
+      <button class="ws-tab" data-target="ws-mutations">🦠 Mutaciones</button>
     </div>
 
-    <textarea id="rna-input" spellcheck="false"></textarea>
-    
-    <h2>🧬 Traducción en Tiempo Real</h2>
-    <div id="aa-container" class="aa-grid"></div>
+    <!-- VIEW: SEQUENCER -->
+    <div id="ws-sequencer" class="ws-content active">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Longitud</div>
+          <div class="stat-val" id="stat-len">0</div>
+        </div>
+        <div class="stat-card">
+          <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">GC %</div>
+          <div class="stat-val" id="stat-gc">0%</div>
+        </div>
+        <div class="stat-card" style="grid-column: span 2;">
+          <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;">Estado del Ribosoma</div>
+          <div class="stat-val" id="stat-status" style="color: var(--primary);">Esperando...</div>
+        </div>
+      </div>
 
-    <div id="stat-status" style="margin-top:auto; font-size:0.7rem; color:var(--text-muted); border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
-      SISTEMA LISTO: Introduce secuencia ARN para comenzar.
+      <div class="editor-wrapper">
+        <textarea id="rna-input" spellcheck="false" placeholder="Ingresa secuencia ARN (ej. AUGGCUUAG...)"></textarea>
+        <div id="rna-visual"></div>
+      </div>
+
+      <canvas id="visualizer"></canvas>
+
+      <h2>🔬 Cadena de Polipéptidos (Traducción)</h2>
+      <div id="aa-container" class="aa-grid"></div>
+    </div>
+
+    <!-- VIEW: MUTATIONS LAB -->
+    <div id="ws-mutations" class="ws-content">
+      <h2>🧬 Inyectar Variabilidad Genética</h2>
+      <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Aplica diferentes tipos de mutaciones a la secuencia actual para observar y escuchar cómo la evolución altera la estructura de la proteína.</p>
+      
+      <div class="mutation-grid">
+        <div class="mutation-card">
+          <div class="mutation-header">
+            <span class="mutation-title">Silenciosa</span>
+            <button class="info-btn" onclick="showModal('silent')">i</button>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">Cambia una base, pero el aminoácido se mantiene igual.</p>
+          <button class="btn btn-mut" onclick="applyMutation('silent')" style="margin-top: auto; padding: 0.5rem;">Generar</button>
+        </div>
+        
+        <div class="mutation-card">
+          <div class="mutation-header">
+            <span class="mutation-title">Cambio de Sentido (Missense)</span>
+            <button class="info-btn" onclick="showModal('missense')">i</button>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">Altera un codón produciendo un aminoácido distinto.</p>
+          <button class="btn btn-mut" onclick="applyMutation('missense')" style="margin-top: auto; padding: 0.5rem;">Generar</button>
+        </div>
+
+        <div class="mutation-card">
+          <div class="mutation-header">
+            <span class="mutation-title">Sin Sentido (Nonsense)</span>
+            <button class="info-btn" onclick="showModal('nonsense')">i</button>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">Crea accidentalmente una señal de PARADA (Stop).</p>
+          <button class="btn btn-mut" onclick="applyMutation('nonsense')" style="margin-top: auto; padding: 0.5rem;">Generar</button>
+        </div>
+
+        <div class="mutation-card">
+          <div class="mutation-header">
+            <span class="mutation-title">Desplazamiento (Frameshift)</span>
+            <button class="info-btn" onclick="showModal('frameshift')">i</button>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">Inserta una base extra, desfasando toda la lectura.</p>
+          <button class="btn btn-mut" onclick="applyMutation('frameshift')" style="margin-top: auto; padding: 0.5rem;">Generar</button>
+        </div>
+      </div>
+
+      <h2>🔍 Comparador de Secuencias</h2>
+      <div class="diff-viewer" id="diff-viewer">
+        <p style="color: var(--text-muted); text-align: center; margin-top: 2rem;">Aplica una mutación arriba para ver los cambios.</p>
+      </div>
+
+      <button id="btn-load-mutation" class="btn btn-play" style="display: none; width: 100%;">🎵 Cargar en el Secuenciador y Escuchar</button>
+
     </div>
   </main>
 </div>
 
+<!-- Modal for info popups -->
+<div class="modal-overlay" id="modal">
+  <div class="modal-box">
+    <div class="modal-title" id="modal-title">Título</div>
+    <p id="modal-text" style="color: var(--text-muted); line-height: 1.6; font-size: 1.05rem;"></p>
+    <button class="modal-close" onclick="closeModal()">Entendido</button>
+  </div>
+</div>
+
 <script>
-// --- MOTOR DE DATOS ---
+/**
+ * DATA & TABLES
+ */
 const AMINO_ACIDS = {
-  'Ala': { type: 'nonpolar', weight: 89 }, 'Val': { type: 'nonpolar', weight: 117 },
-  'Ser': { type: 'polar', weight: 105 }, 'Arg': { type: 'basic', weight: 174 },
-  'Asp': { type: 'acidic', weight: 133 }, 'Stop': { type: 'stop', weight: 0 },
-  'Met': { type: 'nonpolar', weight: 149 }
+  'Ala': { name: 'Alanina', type: 'nonpolar', abbr: 'A' },
+  'Val': { name: 'Valina', type: 'nonpolar', abbr: 'V' },
+  'Leu': { name: 'Leucina', type: 'nonpolar', abbr: 'L' },
+  'Ile': { name: 'Isoleucina', type: 'nonpolar', abbr: 'I' },
+  'Pro': { name: 'Prolina', type: 'nonpolar', abbr: 'P' },
+  'Phe': { name: 'Fenilalanina', type: 'nonpolar', abbr: 'F' },
+  'Trp': { name: 'Triptófano', type: 'nonpolar', abbr: 'W' },
+  'Met': { name: 'Metionina', type: 'nonpolar', abbr: 'M' },
+  'Gly': { name: 'Glicina', type: 'nonpolar', abbr: 'G' },
+  'Ser': { name: 'Serina', type: 'polar', abbr: 'S' },
+  'Thr': { name: 'Treonina', type: 'polar', abbr: 'T' },
+  'Cys': { name: 'Cisteína', type: 'polar', abbr: 'C' },
+  'Tyr': { name: 'Tirosina', type: 'polar', abbr: 'Y' },
+  'Asn': { name: 'Asparagina', type: 'polar', abbr: 'N' },
+  'Gln': { name: 'Glutamina', type: 'polar', abbr: 'Q' },
+  'Lys': { name: 'Lisina', type: 'basic', abbr: 'K' },
+  'Arg': { name: 'Arginina', type: 'basic', abbr: 'R' },
+  'His': { name: 'Histidina', type: 'basic', abbr: 'H' },
+  'Asp': { name: 'Ácido Aspártico', type: 'acidic', abbr: 'D' },
+  'Glu': { name: 'Ácido Glutámico', type: 'acidic', abbr: 'E' },
+  'Stop': { name: 'Codón de Parada', type: 'stop', abbr: '*' }
 };
-const CODON_TABLE = { 
-    AUG: 'Met', GCU: 'Ala', GCC: 'Ala', GCA: 'Ala', GCG: 'Ala',
-    GUU: 'Val', GUC: 'Val', GUA: 'Val', GUG: 'Val',
-    UCU: 'Ser', UCC: 'Ser', UCA: 'Ser', UCG: 'Ser',
-    CGU: 'Arg', CGC: 'Arg', CGA: 'Arg', CGG: 'Arg',
-    GAU: 'Asp', GAC: 'Asp', UAA: 'Stop', UAG: 'Stop', UGA: 'Stop'
+
+const CODON_TABLE = {
+  UUU: 'Phe', UUC: 'Phe', UUA: 'Leu', UUG: 'Leu',
+  UCU: 'Ser', UCC: 'Ser', UCA: 'Ser', UCG: 'Ser',
+  UAU: 'Tyr', UAC: 'Tyr', UAA: 'Stop', UAG: 'Stop',
+  UGU: 'Cys', UGC: 'Cys', UGA: 'Stop', UGG: 'Trp',
+  CUU: 'Leu', CUC: 'Leu', CUA: 'Leu', CUG: 'Leu',
+  CCU: 'Pro', CCC: 'Pro', CCA: 'Pro', CCG: 'Pro',
+  CAU: 'His', CAC: 'His', CAA: 'Gln', CAG: 'Gln',
+  CGU: 'Arg', CGC: 'Arg', CGA: 'Arg', CGG: 'Arg',
+  AUU: 'Ile', AUC: 'Ile', AUA: 'Ile', AUG: 'Met',
+  ACU: 'Thr', ACC: 'Thr', ACA: 'Thr', ACG: 'Thr',
+  AAU: 'Asn', AAC: 'Asn', AAA: 'Lys', AAG: 'Lys',
+  AGU: 'Ser', AGC: 'Ser', AGA: 'Arg', AGG: 'Arg',
+  GUU: 'Val', GUC: 'Val', GUA: 'Val', GUG: 'Val',
+  GCU: 'Ala', GCC: 'Ala', GCA: 'Ala', GCG: 'Ala',
+  GAU: 'Asp', GAC: 'Asp', GAA: 'Glu', GAG: 'Glu',
+  GGU: 'Gly', GGC: 'Gly', GGA: 'Gly', GGG: 'Gly'
 };
+
 const PRESETS = {
-  oxytocin: "AUGUGCUACCUGCAGAAUUGCCCCCGGGGAUAG",
-  insulin: "AUGGCCCUGUGGAUGCGCCUCCUGCCCCUGCUGGCGCUGCUGGCCCUCUGGGGACCUGACCCAGCCGCAGCCUUU",
-  gfp: "AUGAGUAAAGGAGAAGAACUUUUCACUGGAGUUGUCCCAAUUCUUGUUGAUUUAGGACAAACUGCUAGAGCUGGA"
+  oxytocin: "AUGUGCUACCUGCAGAAUUGCCCCCGGGGA",
+  insulin: "AUGGCCCUGUGGAUGCGCCUCCUGCCCCUGCUGGCGCUGCUGGCCCUCUGGGGACCUGACCCAGCCGCAGCCUUUGUGAACCAACACCUGUGCGGCUCACACCUGGUGGAAGCUCUCUACCUAGUGUGCGGGGAACGAGGCUUCUUCUACACACCCAAGACCCGCCGGGAGGCAGAGGACCUGCAGGUGGGGCAGGUGGAGCUGGGCGGCGGCCCUGGUGCAGGCAGCCUGCAGCCCUUGGCCCUGGAGGGGUCCCUGCAGAAGCGUGGCAUUGUGGAACAAUGCUGUACCAGCAUCUGCUCCCUCUACCAGCUGGAGAACUACUGCAACUAG",
+  gfp: "AUGAGUAAAGGAGAAGAACUUUUCACUGGAGUUGUCCCAAUUCUUGUUGAUUUAGGACAAACUGCUAGAGCUGGAAAAGUAUGCAAAGGUGAAGUAAAUUUGUCAAAGAAUACUGAUCUGGAAAAUUGAAACAAUACUGAAAACGGUGUAACUAAACUA",
+  endorphin: "AUGUACGGUGGUUUCAUGACCUCCGAGAAGAGCCAAACUCCUCUGGUUACUCUUAAAAAAA",
+  collagen: "AUGUUCAGCUUUGUGGGACUUUACUUGCUGGCCUGCCUGCUUCCCGGGGCCCUUGGGCCGGGCGGCCCUGGCGGUCCCGGUGGGCCUGGAGGACCCGGUGGACCCGGUGGACCCGGU"
 };
-const BASE_COLORS = { A: '#ef4444', U: '#f59e0b', G: '#10b981', C: '#3b82f6' };
 
-// --- VARIABLES GLOBALES ---
-let audioCtx, masterGain, isPlaying = false, currentIdx = 0, timer;
-let rotationAngle = 0;
+const SCALES = {
+  major: [0, 2, 4, 5, 7, 9, 11],
+  minor: [0, 2, 3, 5, 7, 8, 10],
+  dorian: [0, 2, 3, 5, 7, 9, 10],
+  phrygian: [0, 1, 3, 5, 7, 8, 10],
+  lydian: [0, 2, 4, 6, 7, 9, 11],
+  japanese: [0, 1, 5, 7, 8]
+};
+const NOTES = {"C":0,"C#":1,"D":2,"D#":3,"E":4,"F":5,"F#":6,"G":7,"G#":8,"A":9,"A#":10,"B":11};
+const BASE_DEGREES = { G: 0, C: 2, A: 4, U: 6 };
+const CHORD_TYPES = { nonpolar: [0, 2, 4], polar: [0, 2, 5], basic: [0, 3, 4], acidic: [0, 1, 4], stop: [] };
 
-// --- VISUALIZADOR DE HÉLICE 3D ---
-const canvas = document.getElementById('dna-canvas');
-const ctx = canvas.getContext('2d');
+// --- AUDIO ENGINE ---
+let audioCtx, masterGain, compressor, analyser, reverbNode, delayNode, delayFeedback;
 
-function drawDNA() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const speed = document.getElementById('param-rotation').value / 100;
-  rotationAngle += isPlaying ? speed * 2 : speed;
-
-  const centerY = canvas.height / 2;
-  const centerX = canvas.width / 2;
-  const amplitude = 60;
-  const spacing = 15;
-
-  for (let i = 0; i < 15; i++) {
-    const x = (i * spacing) + (centerX - 100);
-    const angle = rotationAngle + (i * 0.5);
-    
-    const y1 = centerY + Math.sin(angle) * amplitude;
-    const y2 = centerY + Math.sin(angle + Math.PI) * amplitude;
-
-    // Dibujar unión (peldaño)
-    ctx.beginPath();
-    ctx.moveTo(x, y1);
-    ctx.lineTo(x, y2);
-    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-    ctx.stroke();
-
-    // Dibujar Nucleótidos (bolas)
-    drawNode(x, y1, angle, i);
-    drawNode(x, y2, angle + Math.PI, i + 100);
-  }
-  requestAnimationFrame(drawDNA);
-}
-
-function drawNode(x, y, angle, id) {
-  const size = 4 + Math.cos(angle) * 2;
-  ctx.beginPath();
-  ctx.arc(x, y, size, 0, Math.PI * 2);
-  // Si está sonando, brilla en cian, si no, en gris azulado
-  ctx.fillStyle = isPlaying && Math.abs(x - 150) < 20 ? '#00f0ff' : '#334466';
-  ctx.shadowBlur = isPlaying ? 10 : 0;
-  ctx.shadowColor = '#00f0ff';
-  ctx.fill();
-  ctx.shadowBlur = 0;
-}
-
-// --- AUDIO ---
-function playBioTone(freq, duration) {
-  if (!audioCtx) return;
-  const osc = audioCtx.createOscillator();
-  const g = audioCtx.createGain();
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-  g.gain.setValueAtTime(0.1, audioCtx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
-  osc.connect(g).connect(masterGain);
-  osc.start(); osc.stop(audioCtx.currentTime + duration);
-}
-
-function processStep() {
-  const seq = document.getElementById('rna-input').value.toUpperCase().replace(/[^GACU]/g, '');
-  const codons = [];
-  for(let i=0; i<seq.length-2; i+=3) {
-    const tri = seq.substring(i, i+3);
-    const aa = CODON_TABLE[tri] || 'Ala';
-    codons.push({ tri, ...AMINO_ACIDS[aa], name: aa });
-  }
-
-  if (currentIdx >= codons.length || !isPlaying) { stop(); return; }
-
-  const c = codons[currentIdx];
-  const bpm = document.getElementById('bpm').value;
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   
-  // Sonido basado en la primera base del codón
-  const freqs = { A: 440, U: 330, G: 392, C: 261 };
-  playBioTone(freqs[c.tri[0]] || 220, 0.4);
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.8;
+  compressor = audioCtx.createDynamicsCompressor();
+  compressor.threshold.value = -24;
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 2048;
+  
+  reverbNode = audioCtx.createConvolver();
+  const length = audioCtx.sampleRate * 2.5; 
+  const impulse = audioCtx.createBuffer(2, length, audioCtx.sampleRate);
+  for (let i = 0; i < 2; i++) {
+    const channel = impulse.getChannelData(i);
+    for (let j = 0; j < length; j++) channel[j] = (Math.random() * 2 - 1) * Math.pow(1 - j / length, 4);
+  }
+  reverbNode.buffer = impulse;
+  
+  delayNode = audioCtx.createDelay();
+  delayNode.delayTime.value = 0.333;
+  delayFeedback = audioCtx.createGain();
+  delayFeedback.gain.value = 0.4;
+  delayNode.connect(delayFeedback);
+  delayFeedback.connect(delayNode);
+  
+  const reverbGain = audioCtx.createGain(); reverbGain.gain.value = 0.6;
+  reverbNode.connect(reverbGain).connect(compressor);
+  
+  const delayOutGain = audioCtx.createGain(); delayOutGain.gain.value = 0.4;
+  delayNode.connect(delayOutGain).connect(compressor);
 
-  // Update UI
-  updateStats(codons, currentIdx);
-  currentIdx++;
-  timer = setTimeout(processStep, 60000 / bpm);
+  masterGain.connect(compressor);
+  masterGain.connect(reverbNode);
+  masterGain.connect(delayNode);
+  compressor.connect(analyser);
+  analyser.connect(audioCtx.destination);
+  
+  startVisualizer();
 }
 
-function updateStats(codons, idx) {
-  const container = document.getElementById('aa-container');
-  container.innerHTML = codons.map((c, i) => `
-    <div class="aa-card ${i===idx?'active':''}" style="border-color:${BASE_COLORS[c.tri[0]]}">
-      <strong>${c.tri}</strong><br>${c.name}
+function getFreq(rootKey, scaleName, octave, degreeOffset) {
+  const scale = SCALES[scaleName];
+  const rootMidi = 60 + NOTES[rootKey] + (octave * 12);
+  const octavesUp = Math.floor(degreeOffset / scale.length);
+  const scaleDegree = degreeOffset % scale.length;
+  const midiNote = rootMidi + scale[scaleDegree] + (octavesUp * 12);
+  return 440 * Math.pow(2, (midiNote - 69) / 12);
+}
+
+function playSynth(freq, time, dur, type, velocity = 1) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  const filter = audioCtx.createBiquadFilter();
+  
+  filter.type = 'lowpass';
+  if (type === 'fm') {
+    const mod = audioCtx.createOscillator();
+    const modGain = audioCtx.createGain();
+    osc.type = 'sine'; mod.type = 'sine'; mod.frequency.value = freq * 2;
+    modGain.gain.setValueAtTime(freq * 3, time);
+    modGain.gain.exponentialRampToValueAtTime(10, time + dur * 0.5);
+    mod.connect(modGain); modGain.connect(osc.frequency);
+    mod.start(time); mod.stop(time + dur + 0.1);
+    filter.frequency.value = 5000;
+  } else {
+    osc.type = type;
+    filter.frequency.setValueAtTime(freq * 6, time);
+    filter.frequency.exponentialRampToValueAtTime(freq, time + dur * 0.8);
+  }
+  osc.frequency.setValueAtTime(freq, time);
+  
+  gain.gain.setValueAtTime(0, time);
+  const peak = 0.6 * velocity;
+  gain.gain.linearRampToValueAtTime(peak, time + 0.02);
+  gain.gain.exponentialRampToValueAtTime(peak * 0.3, time + dur * 0.3);
+  gain.gain.linearRampToValueAtTime(0, time + dur);
+
+  osc.connect(filter); filter.connect(gain); gain.connect(masterGain);
+  osc.start(time); osc.stop(time + dur + 0.1);
+}
+
+function playPad(freq, time, dur, velocity = 0.5) {
+  const osc1 = audioCtx.createOscillator(), osc2 = audioCtx.createOscillator();
+  const gain = audioCtx.createGain(), filter = audioCtx.createBiquadFilter();
+  osc1.type = 'sawtooth'; osc2.type = 'square';
+  osc1.frequency.value = freq; osc2.frequency.value = freq * 1.01;
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(freq * 1.5, time);
+  filter.frequency.linearRampToValueAtTime(freq * 3, time + dur/2);
+  filter.frequency.linearRampToValueAtTime(freq * 1.5, time + dur);
+  gain.gain.setValueAtTime(0, time);
+  gain.gain.linearRampToValueAtTime(0.2 * velocity, time + dur * 0.3);
+  gain.gain.linearRampToValueAtTime(0, time + dur);
+  osc1.connect(filter); osc2.connect(filter); filter.connect(gain);
+  gain.connect(compressor); gain.connect(reverbNode);
+  osc1.start(time); osc2.start(time);
+  osc1.stop(time + dur + 0.1); osc2.stop(time + dur + 0.1);
+}
+
+// --- APP LOGIC ---
+const dom = {
+  input: document.getElementById('rna-input'),
+  visual: document.getElementById('rna-visual'),
+  preset: document.getElementById('preset-select'),
+  bpm: document.getElementById('bpm'),
+  bpmVal: document.getElementById('bpm-val'),
+  div: document.getElementById('division'),
+  root: document.getElementById('root-note'),
+  scale: document.getElementById('scale-type'),
+  synth: document.getElementById('synth-type'),
+  btnPlay: document.getElementById('btn-play'),
+  btnStop: document.getElementById('btn-stop'),
+  statLen: document.getElementById('stat-len'),
+  statGc: document.getElementById('stat-gc'),
+  statStatus: document.getElementById('stat-status'),
+  aaContainer: document.getElementById('aa-container')
+};
+
+let isPlaying = false;
+let sequence = "";
+let codonData = [];
+let nextNoteTime = 0;
+let currentCodonIdx = 0;
+let scheduleTimer;
+
+function cleanSequence(raw) { return raw.toUpperCase().replace(/T/g, 'U').replace(/[^GUAC]/g, ''); }
+
+function parseCodons(seq) {
+  const codons = [];
+  for(let i = 0; i < seq.length - 2; i+=3) {
+    const triplet = seq.substring(i, i+3);
+    const aaKey = CODON_TABLE[triplet];
+    codons.push({ triplet, ...(AMINO_ACIDS[aaKey] || AMINO_ACIDS['Stop']) });
+  }
+  return codons;
+}
+
+function updateVisuals(seq) {
+  dom.statLen.textContent = seq.length;
+  const gcCount = (seq.match(/[GC]/g) || []).length;
+  dom.statGc.textContent = seq.length ? Math.round((gcCount / seq.length) * 100) + '%' : '0%';
+  let html = '';
+  for(let i=0; i<seq.length; i++) html += `<span class="base-${seq[i]}" id="base-${i}">${seq[i]}</span>`;
+  dom.visual.innerHTML = html;
+  
+  codonData = parseCodons(seq);
+  dom.aaContainer.innerHTML = codonData.map((c, i) => `
+    <div class="aa-card prop-${c.type}" id="aa-card-${i}">
+      <div class="aa-codon">${c.triplet}</div>
+      <div class="aa-name">${c.name}</div>
+      <div class="aa-prop">${c.type}</div>
     </div>
   `).join('');
-  
-  const gc = (codons.map(c=>c.tri).join('').match(/[GC]/g) || []).length;
-  document.getElementById('stat-gc').textContent = Math.round((gc/(codons.length*3))*100) + '%';
-  document.getElementById('stat-weight').textContent = codons.reduce((a,b)=>a+b.weight, 0) + " Da";
-  
-  if(container.querySelectorAll('.aa-card')[idx]) 
-    container.querySelectorAll('.aa-card')[idx].scrollIntoView({ behavior: 'smooth', inline: 'center' });
 }
 
-function stop() { isPlaying = false; currentIdx = 0; clearTimeout(timer); }
-
-document.getElementById('btn-play').onclick = () => {
-  if (!audioCtx) {
-    audioCtx = new AudioContext();
-    masterGain = audioCtx.createGain();
-    masterGain.connect(audioCtx.destination);
+function highlightCodon(idx) {
+  document.querySelectorAll('.ribosome-active').forEach(el => el.classList.remove('ribosome-active'));
+  document.querySelectorAll('.aa-card.active').forEach(el => el.classList.remove('active'));
+  if(idx >= codonData.length) return;
+  for(let i=0; i<3; i++) {
+    const el = document.getElementById(`base-${idx * 3 + i}`);
+    if(el) el.classList.add('ribosome-active');
   }
-  if(!isPlaying){ isPlaying = true; processStep(); }
-};
-document.getElementById('btn-stop').onclick = stop;
-document.getElementById('preset-select').onchange = (e) => {
-  document.getElementById('rna-input').value = PRESETS[e.target.value];
-  stop();
-};
-document.getElementById('btn-mutate').onclick = () => {
-  let s = document.getElementById('rna-input').value.split('');
-  s[Math.floor(Math.random()*s.length)] = ['A','U','G','C'][Math.floor(Math.random()*4)];
-  document.getElementById('rna-input').value = s.join('');
+  const card = document.getElementById(`aa-card-${idx}`);
+  if(card) { card.classList.add('active'); card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
+}
+
+function scheduleNext() {
+  while (nextNoteTime < audioCtx.currentTime + 0.1) {
+    if (currentCodonIdx >= codonData.length) { stopSequence(); return; }
+    playCodon(codonData[currentCodonIdx], nextNoteTime);
+    const idxToHighlight = currentCodonIdx;
+    setTimeout(() => { if(isPlaying) { highlightCodon(idxToHighlight); dom.statStatus.textContent = `Leyendo codón ${idxToHighlight + 1}/${codonData.length}`; } }, (nextNoteTime - audioCtx.currentTime) * 1000);
+    const stepDuration = (60 / dom.bpm.value) * dom.div.value * 4;
+    nextNoteTime += stepDuration; currentCodonIdx++;
+  }
+  scheduleTimer = setTimeout(scheduleNext, 25);
+}
+
+function playCodon(codon, time) {
+  const rootKey = dom.root.value, scaleName = dom.scale.value, synthType = dom.synth.value;
+  const stepDur = ((60 / dom.bpm.value) * dom.div.value * 4) * 0.9;
+  
+  for(let i=0; i<3; i++) {
+    const freq = getFreq(rootKey, scaleName, 1, BASE_DEGREES[codon.triplet[i]]);
+    playSynth(freq, time + (i * (stepDur / 3)), stepDur / 3, synthType, 1.0);
+  }
+
+  if (codon.type === 'stop') playSynth(50, time, stepDur, 'square', 2.0);
+  else CHORD_TYPES[codon.type].forEach(offset => playPad(getFreq(rootKey, scaleName, -1, offset), time, stepDur, 0.4));
+}
+
+function playSequence() {
+  if(sequence.length < 3) return;
+  initAudio();
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  const bps = parseFloat(dom.bpm.value) / 60;
+  if(delayNode) delayNode.delayTime.value = (1 / bps) * 0.75;
+  isPlaying = true; currentCodonIdx = 0; nextNoteTime = audioCtx.currentTime + 0.1;
+  dom.btnPlay.innerHTML = '⏸ Pausa'; dom.btnPlay.style.background = 'var(--bg-surface-hover)';
+  dom.statStatus.textContent = "Iniciando traducción...";
+  scheduleNext();
+}
+
+function stopSequence() {
+  isPlaying = false; clearTimeout(scheduleTimer);
+  dom.btnPlay.innerHTML = '▶ Sintetizar'; dom.btnPlay.style.background = 'linear-gradient(135deg, var(--primary), #0077ff)';
+  dom.statStatus.textContent = "Detenido";
+  document.querySelectorAll('.ribosome-active, .active').forEach(el => el.classList.remove('ribosome-active', 'active'));
+}
+
+// --- VISUALIZER ---
+function startVisualizer() {
+  const canvas = document.getElementById('visualizer'), ctx = canvas.getContext('2d');
+  function draw() {
+    requestAnimationFrame(draw);
+    if (!analyser) return;
+    const W = canvas.width = canvas.clientWidth * window.devicePixelRatio, H = canvas.height = canvas.clientHeight * window.devicePixelRatio;
+    const bufferLength = analyser.frequencyBinCount, dataArray = new Uint8Array(bufferLength);
+    analyser.getByteFrequencyData(dataArray);
+    ctx.fillStyle = 'rgba(5, 5, 5, 0.2)'; ctx.fillRect(0, 0, W, H);
+    
+    const cx = W / 2, cy = H / 2, radius = Math.min(cx, cy) * 0.5;
+    ctx.lineWidth = 2;
+    for (let rings = 0; rings < 2; rings++) {
+      ctx.beginPath();
+      for (let i = 0; i < bufferLength; i += 8) {
+        const val = dataArray[i] / 255.0, r = radius + (val * radius * 1.5) * (rings === 0 ? 1 : -1);
+        const rads = (i / bufferLength) * Math.PI * 2 + (Date.now() / 2000) * (rings === 0 ? 1 : -1);
+        const x = cx + Math.cos(rads) * r, y = cy + Math.sin(rads) * r;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      const grad = ctx.createLinearGradient(0, 0, W, H);
+      grad.addColorStop(0, rings === 0 ? '#00f0ff' : '#7000ff'); grad.addColorStop(1, rings === 0 ? '#10b981' : '#f59e0b');
+      ctx.strokeStyle = grad; ctx.stroke();
+    }
+    const barWidth = (W / bufferLength) * 4;
+    for(let i = 0; i < bufferLength; i+=4) {
+      const barHeight = (dataArray[i] / 255) * (H/3);
+      ctx.fillStyle = `hsl(${(i/bufferLength)*360}, 100%, 50%)`;
+      ctx.fillRect(i * barWidth, H - barHeight, barWidth - 1, barHeight);
+    }
+  }
+  draw();
+}
+
+// --- MUTATIONS LAB LOGIC ---
+const MODAL_DATA = {
+  silent: { title: "Mutación Silenciosa 🤫", text: "Cambia una base de ARN, pero gracias a la redundancia del código genético, el codón resultante sigue codificando para el **mismo aminoácido**. <br><br>En nuestra música, verás que cambia un arpegio levemente, pero el acorde armónico (la propiedad química) permanece intacto. ¡La evolución a veces pasa desapercibida!" },
+  missense: { title: "Mutación de Cambio de Sentido 🧬", text: "Altera una letra clave en un codón, provocando que se coloque un **aminoácido completamente distinto**. <br><br>Musicalmente, esto puede transformar un acorde mayor estable en uno tenso o disminuido, cambiando el tono emocional de nuestra proteína para siempre." },
+  nonsense: { title: "Mutación Sin Sentido 🛑", text: "Un error catastrófico. Un cambio de base crea accidentalmente un codón de PARADA (UAA, UAG, UGA). <br><br>El ribosoma se detiene prematuramente. La proteína queda incompleta. En nuestro estudio, escucharás cómo la canción se corta abruptamente en un ruido sordo." },
+  frameshift: { title: "Desplazamiento del Marco 🌪️", text: "Se inserta o elimina una base extra. Como el ARN se lee de 3 en 3, ¡este pequeño cambio desplaza la lectura de todos los codones siguientes!<br><br>Genera un caos absoluto. Toda la cadena de aminoácidos a partir de ese punto será diferente. ¡Escucharás una disonancia total comparada con la original!" }
 };
 
-// Inicio
-document.getElementById('rna-input').value = PRESETS.oxytocin;
-drawDNA();
+function showModal(type) {
+  document.getElementById('modal-title').innerHTML = MODAL_DATA[type].title;
+  document.getElementById('modal-text').innerHTML = MODAL_DATA[type].text;
+  document.getElementById('modal').classList.add('active');
+}
+function closeModal() { document.getElementById('modal').classList.remove('active'); }
+
+let currentMutatedSequence = "";
+
+function applyMutation(type) {
+  const orig = cleanSequence(dom.input.value);
+  if(orig.length < 6) return alert("Secuencia muy corta para mutar.");
+  
+  let mut = orig;
+  let applied = false;
+
+  if (type === 'silent') {
+    for(let i=0; i<orig.length-2; i+=3) {
+      let codon = orig.substring(i, i+3);
+      let aa = CODON_TABLE[codon];
+      let alts = Object.keys(CODON_TABLE).filter(c => CODON_TABLE[c] === aa && c !== codon);
+      if(alts.length > 0) {
+        mut = orig.substring(0, i) + alts[0] + orig.substring(i+3);
+        applied = true; break;
+      }
+    }
+  } 
+  else if (type === 'missense') {
+    for(let i=3; i<orig.length-2; i+=3) { // Skip start codon
+      let codon = orig.substring(i, i+3);
+      let aa = CODON_TABLE[codon];
+      let bases = ['G','U','A','C'];
+      for(let b of bases) {
+        if(b !== codon[0]) {
+          let newCod = b + codon.substring(1);
+          let newAa = CODON_TABLE[newCod];
+          if(newAa !== aa && newAa !== 'Stop') {
+            mut = orig.substring(0, i) + newCod + orig.substring(i+3);
+            applied = true; break;
+          }
+        }
+      }
+      if(applied) break;
+    }
+  }
+  else if (type === 'nonsense') {
+    for(let i=3; i<orig.length-2; i+=3) {
+      let codon = orig.substring(i, i+3);
+      let bases = ['G','U','A','C'];
+      for(let j=0; j<3; j++) {
+        for(let b of bases) {
+          if(b !== codon[j]) {
+            let newCod = codon.substring(0, j) + b + codon.substring(j+1);
+            if(CODON_TABLE[newCod] === 'Stop') {
+              mut = orig.substring(0, i) + newCod + orig.substring(i+3);
+              applied = true; break;
+            }
+          }
+        }
+        if(applied) break;
+      }
+      if(applied) break;
+    }
+    if(!applied) { // force stop in middle if none 1 base away
+      let mid = Math.floor((orig.length/3)/2)*3;
+      mut = orig.substring(0, mid) + 'UAA' + orig.substring(mid+3);
+    }
+  }
+  else if (type === 'frameshift') {
+    // Insert random base at position 4 (second codon)
+    const bases = ['G','U','A','C'];
+    const rBase = bases[Math.floor(Math.random()*4)];
+    mut = orig.substring(0, 4) + rBase + orig.substring(4);
+  }
+
+  currentMutatedSequence = mut;
+  renderDiff(orig, mut);
+  document.getElementById('btn-load-mutation').style.display = 'block';
+}
+
+function renderDiff(orig, mut) {
+  const viewer = document.getElementById('diff-viewer');
+  
+  let origHtml = '<div class="diff-row"><div class="diff-label">Original:</div><div class="diff-seq">';
+  let origCodons = parseCodons(orig);
+  origCodons.forEach(c => {
+    origHtml += `<div class="codon-box"><b>${c.triplet}</b><span class="codon-aa">${c.abbr}</span></div>`;
+  });
+  origHtml += '</div></div>';
+
+  let mutHtml = '<div class="diff-row" style="margin-top:1rem;"><div class="diff-label" style="color:var(--mutation);">Mutada:</div><div class="diff-seq">';
+  let mutCodons = parseCodons(mut);
+  
+  for(let i=0; i<Math.max(origCodons.length, mutCodons.length); i++) {
+    if(!mutCodons[i]) continue;
+    let isDiff = !origCodons[i] || origCodons[i].triplet !== mutCodons[i].triplet;
+    mutHtml += `<div class="codon-box ${isDiff ? 'mutated' : ''}"><b>${mutCodons[i].triplet}</b><span class="codon-aa">${mutCodons[i].abbr}</span></div>`;
+    // Stop rendering if it's a stop codon to show truncation
+    if(mutCodons[i].type === 'stop') break;
+  }
+  mutHtml += '</div></div>';
+
+  viewer.innerHTML = origHtml + mutHtml;
+}
+
+document.getElementById('btn-load-mutation').addEventListener('click', () => {
+  dom.input.value = currentMutatedSequence;
+  sequence = cleanSequence(currentMutatedSequence);
+  updateVisuals(sequence);
+  
+  // Switch back to Studio Tab
+  document.querySelector('[data-target="ws-sequencer"]').click();
+  // Play
+  setTimeout(() => playSequence(), 300);
+});
+
+// --- EVENTS ---
+document.querySelectorAll('.ws-tab').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    document.querySelectorAll('.ws-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.ws-content').forEach(c => c.classList.remove('active'));
+    e.target.classList.add('active');
+    document.getElementById(e.target.dataset.target).classList.add('active');
+  });
+});
+
+dom.input.addEventListener('input', (e) => {
+  const clean = cleanSequence(e.target.value);
+  if(clean !== e.target.value) { const pos = e.target.selectionStart; e.target.value = clean; e.target.setSelectionRange(pos, pos); }
+  sequence = clean; updateVisuals(sequence);
+});
+dom.input.addEventListener('scroll', () => dom.visual.scrollTop = dom.input.scrollTop);
+
+dom.preset.addEventListener('change', (e) => {
+  if(!e.target.value) return;
+  dom.input.value = PRESETS[e.target.value];
+  dom.input.dispatchEvent(new Event('input'));
+  stopSequence();
+  document.getElementById('diff-viewer').innerHTML = '<p style="color: var(--text-muted); text-align: center; margin-top: 2rem;">Aplica una mutación arriba para ver los cambios.</p>';
+  document.getElementById('btn-load-mutation').style.display = 'none';
+});
+
+dom.bpm.addEventListener('input', (e) => dom.bpmVal.textContent = e.target.value);
+dom.btnPlay.addEventListener('click', () => isPlaying ? stopSequence() : playSequence());
+dom.btnStop.addEventListener('click', stopSequence);
+
+// Init
+dom.input.value = PRESETS.oxytocin;
+dom.input.dispatchEvent(new Event('input'));
 </script>
 </body>
 </html>

@@ -2,39 +2,29 @@
 <html lang="es">
 <head>
 <meta charset="utf-8" />
-<title>RNA Synthesia v3.2 | Genomic Orchestra</title>
+<title>RNA Synthesia v5 | Folding Matrix</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Outfit:wght@300;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;500&family=Syncopate:wght@700&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #010409;
-    --primary: #00f0ff;
-    --accent: #7000ff;
-    --panel: rgba(10, 20, 30, 0.9);
-  }
-  body, html { margin: 0; padding: 0; height: 100%; background: var(--bg); color: #fff; font-family: 'Outfit', sans-serif; overflow: hidden; }
-  
-  /* Interfaz UI */
-  .ui { position: absolute; z-index: 100; display: grid; grid-template-columns: 350px 1fr 300px; width: 100%; height: 100%; pointer-events: none; }
-  .ui > * { pointer-events: all; }
-  .panel { background: var(--panel); backdrop-filter: blur(20px); border: 1px solid rgba(0,240,255,0.2); margin: 20px; padding: 25px; border-radius: 15px; display: flex; flex-direction: column; }
-  
-  h1 { font-size: 1.2rem; letter-spacing: 5px; color: var(--primary); margin: 0 0 20px 0; text-transform: uppercase; }
-  .control { background: rgba(255,255,255,0.05); padding: 15px; border-radius: 10px; margin-bottom: 15px; }
-  label { font-size: 0.7rem; color: var(--primary); text-transform: uppercase; display: block; margin-bottom: 10px; }
-  
-  select, input { width: 100%; background: #000; color: var(--primary); border: 1px solid #333; padding: 8px; border-radius: 5px; font-family: 'Fira Code'; }
-  
-  .btn-exec { background: var(--primary); color: #000; border: none; padding: 15px; width: 100%; font-weight: 900; border-radius: 10px; cursor: pointer; transition: 0.3s; margin-top: auto; }
-  .btn-exec:hover { box-shadow: 0 0 20px var(--primary); transform: translateY(-2px); }
+  :root { --cyan: #00f0ff; --purple: #7000ff; --magenta: #ff0055; --bg: #030305; }
+  body { margin: 0; background: var(--bg); color: #fff; font-family: 'Fira Code', monospace; overflow: hidden; }
 
-  .aa-log { flex: 1; overflow-y: auto; font-family: 'Fira Code'; font-size: 0.7rem; margin-top: 10px; border-top: 1px solid #333; padding-top: 10px; }
-  .aa-entry { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
-  .active-aa { color: var(--primary); background: rgba(0,240,255,0.1); }
+  .ui { position: absolute; z-index: 10; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 25px; box-sizing: border-box; }
+  .ui > * { pointer-events: auto; }
 
-  #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-  .editor { position: absolute; bottom: 40px; left: 390px; right: 340px; background: rgba(0,0,0,0.8); padding: 20px; border-radius: 15px; border: 1px solid var(--primary); pointer-events: all; }
-  textarea { width: 100%; height: 60px; background: transparent; border: none; color: var(--primary); font-family: 'Fira Code'; font-size: 1rem; resize: none; outline: none; letter-spacing: 3px; }
+  .panel { background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); border: 1px solid rgba(0, 240, 255, 0.2); padding: 15px; width: 300px; border-radius: 4px; }
+  .header h1 { font-family: 'Syncopate', sans-serif; font-size: 0.9rem; letter-spacing: 5px; color: var(--cyan); margin: 0; }
+  
+  .btn { width: 100%; padding: 10px; margin-top: 8px; border: 1px solid var(--cyan); background: transparent; color: var(--cyan); cursor: pointer; font-family: 'Fira Code'; font-size: 0.8rem; transition: 0.3s; }
+  .btn:hover { background: var(--cyan); color: #000; }
+  .btn-mut { border-color: var(--magenta); color: var(--magenta); }
+  .btn-mut:hover { background: var(--magenta); color: #fff; }
+
+  .monitor { width: 100%; max-width: 700px; background: rgba(0,0,0,0.8); border-top: 1px solid var(--purple); padding: 10px; align-self: center; }
+  textarea { width: 100%; height: 40px; background: transparent; border: none; color: var(--purple); font-family: 'Fira Code'; font-size: 1rem; outline: none; resize: none; text-align: center; letter-spacing: 3px; }
+
+  #canvas-container { position: fixed; top: 0; left: 0; z-index: 1; }
+  .label { font-size: 0.6rem; color: #555; text-transform: uppercase; margin: 10px 0 5px; display: block; }
 </style>
 </head>
 <body>
@@ -43,224 +33,155 @@
 
 <div class="ui">
   <div class="panel">
-    <h1>Bio-Synth v3.2</h1>
+    <div class="header"><h1>BIO_FOLD_V5</h1></div>
+    <label class="label">Protein Database</label>
+    <select id="preset-select" style="width:100%; background:#000; color:var(--cyan); border:1px solid #333; padding:5px;">
+      <option value="oxytocin">Oxitocina (Corta)</option>
+      <option value="insulin">Insulina (Larga)</option>
+      <option value="gfp">GFP (Compleja)</option>
+    </select>
     
-    <div class="control">
-      <label>Proteína (Selección de ADN)</label>
-      <select id="preset-selector">
-        <option value="oxytocin">Oxitocina (Amor/Vínculo)</option>
-        <option value="somatostatin">Somatostatina (Crecimiento)</option>
-        <option value="glucagon">Glucagón (Energía)</option>
-        <option value="bradykinin">Bradicinina (Presión Arterial)</option>
-        <option value="custom">-- Secuencia Manual --</option>
-      </select>
+    <button class="btn" id="start-btn" style="margin-top:15px; font-weight:bold;">EXECUTE FOLDING</button>
+    
+    <div style="margin-top:15px; border-top:1px solid #222;">
+      <label class="label">Genetic Corruption</label>
+      <button class="btn btn-mut" onclick="mutate('point')">Point Mutation</button>
+      <button class="btn btn-mut" onclick="mutate('frame')">Frameshift Error</button>
     </div>
-
-    <div class="control">
-      <label>Timbre del Sintetizador</label>
-      <select id="wave-type">
-        <option value="triangle">Bio-Organ (Triangular)</option>
-        <option value="sine">Pure Cell (Sinusoidal)</option>
-        <option value="sawtooth">Neural Spike (Sierra)</option>
-      </select>
-    </div>
-
-    <div class="control">
-      <label>Velocidad de Síntesis</label>
-      <input type="range" id="bpm" min="40" max="400" value="160">
-    </div>
-
-    <button class="btn-exec" id="play-btn">EJECUTAR SECUENCIA</button>
   </div>
 
-  <div></div> <!-- Espacio central para 3D -->
-
-  <div class="panel">
-    <label>Secuenciación en Tiempo Real</label>
-    <div id="status" style="font-size: 0.8rem; color: var(--accent);">IDLE</div>
-    <div class="aa-log" id="log"></div>
+  <div class="monitor">
+    <textarea id="rna-input" spellcheck="false"></textarea>
   </div>
-</div>
-
-<div class="editor">
-  <label>Monitor de RNA</label>
-  <textarea id="rna-input" spellcheck="false"></textarea>
 </div>
 
 <script>
-/**
- * DATA DE PROTEÍNAS REALES
- * Las melodías varían porque sus aminoácidos tienen pesos y propiedades distintas.
- */
-const PROTEIN_DB = {
-  oxytocin: "AUGUGCUACCUGCAGAAUUGCCCCCGGGGAUAA",
-  somatostatin: "AUGGCUGGUUGUAAGAAUUUCUUCUGGAAGACUUUCACCUCGUGUUAG",
-  glucagon: "CAUUCUCAAGGCACCUUCACCUCUGACUACUCCAAGUACCUGGACUCCCGCCGUGCCCAGGACUUUGUGCAGUGGUUGAUGAACACCAAAUAA",
-  bradykinin: "CGUCCUCCUGGUUUUUCUCCUUUUCGUUAA"
+/** AUDIO ENGINE **/
+const NOTES = { 'Met':261,'Cys':293,'Tyr':329,'Ile':349,'Gln':392,'Asn':440,'Pro':493,'Gly':523,'Phe':311,'Trp':370,'Ser':415,'Thr':466,'Arg':233,'Leu':207,'Val':196,'STOP':110,'ERR':60 };
+const CODONS = { AUG:'Met',UGC:'Cys',UGU:'Cys',UAC:'Tyr',UAU:'Tyr',AUC:'Ile',AUU:'Ile',CAG:'Gln',CAA:'Gln',AAC:'Asn',AAU:'Asn',CCC:'Pro',CCU:'Pro',GGG:'Gly',UUC:'Phe',UUU:'Phe',UGG:'Trp',AGC:'Ser',AGU:'Ser',AAA:'Lys',CGU:'Arg',CUA:'Leu',GUA:'Val',UAA:'STOP' };
+const SAMPLES = {
+    oxytocin: "AUGUGCUACCUGCAGAAUUGCCCCCGGGGAUAA",
+    insulin: "AUGGCCCUGUGGAUGCGCCUCCUGCCCCUGCUGGCGCUGCUGGCCCUCUGGGGACCUGACCCAGCCGCAGCCUUUGUGAACCAACACCUGUGCGGCUCACACCUGGUGGAAGCUCUCUACCUAGUGUGCGGGGAACGAGGCUUCUUCUACACACCCAAGACCCGCCGGGAGGCAGAGGACCUGCAGGUGGGGCAGGUGGAGCUGGGCGGCGGCCCUGGUGCAGGCAGCCUGCAGCCCUUGGCCCUGGAGGGGUCCCUGCAGAAGCGUGGCAUUGUGGAACAAUGCUGUACCAGCAUCUGCUCCCUCUACCAGCUGGAGAACUACUGCAACUAG",
+    gfp: "AUGAGUAAAGGAGAAGAACUUUUCACUGGAGUUGUCCCAAUUCUUGUUGAUUUAGGACAAACUGCUAGAGCUGGAAAAGUAUGCAAAGGUGAAGUAAAUUUGUCAAAGAAUACUGAUCUGGAAAAUUGAAACAAUACUGAAAACGGUGUAACUAAACUA"
 };
 
-const AA_PROPS = {
-  'Met': { f: 261.63, c: 0x00f0ff }, // C4 - Inicio
-  'Cys': { f: 293.66, c: 0xff0055 }, // D4
-  'Tyr': { f: 329.63, c: 0x7000ff }, // E4
-  'Ile': { f: 349.23, c: 0x00ff88 }, // F4
-  'Gln': { f: 392.00, c: 0xffff00 }, // G4
-  'Asn': { f: 440.00, c: 0xff8800 }, // A4
-  'Pro': { f: 493.88, c: 0x0088ff }, // B4
-  'Gly': { f: 523.25, c: 0xffffff }, // C5
-  'Phe': { f: 277.18, c: 0x444444 }, // C#4
-  'Trp': { f: 311.13, c: 0xaa00ff }, // D#4
-  'Ser': { f: 370.00, c: 0x00ffcc }, // F#4
-  'Lys': { f: 415.30, c: 0xff00ff }, // G#4
-  'Thr': { f: 466.16, c: 0x88ff00 }, // A#4
-  'Arg': { f: 233.08, c: 0xff5500 }, // Bb3
-  'STOP': { f: 130.81, c: 0x333333 }  // C3
-};
-
-const CODON_TABLE = {
-  AUG:'Met', UGC:'Cys', UGU:'Cys', UAC:'Tyr', UAU:'Tyr', AUC:'Ile', AUU:'Ile', 
-  CAG:'Gln', CAA:'Gln', AAC:'Asn', AAU:'Asn', CCC:'Pro', CCU:'Pro', GGG:'Gly', 
-  GGU:'Gly', UUC:'Phe', UUU:'Phe', UGG:'Trp', AGC:'Ser', AGU:'Ser', AAA:'Lys', 
-  AAG:'Lys', ACC:'Thr', ACU:'Thr', CGU:'Arg', CGC:'Arg', UAA:'STOP', UAG:'STOP', UGA:'STOP'
-};
-
-/** 
- * MOTOR 3D 
- */
-let scene, camera, renderer, group, nodes = [];
-function init3D() {
-  scene = new THREE.Scene();
-  camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  document.getElementById('canvas-container').appendChild(renderer.domElement);
-  
-  group = new THREE.Group();
-  scene.add(group);
-  camera.position.set(0, 5, 30);
-  
-  const light = new THREE.DirectionalLight(0xffffff, 1);
-  light.position.set(0, 10, 10);
-  scene.add(light);
-  scene.add(new THREE.AmbientLight(0x202020));
-  
-  loop();
-}
-
-function loop() {
-  requestAnimationFrame(loop);
-  group.rotation.y += 0.005;
-  renderer.render(scene, camera);
-}
-
-function spawnNode(idx, aa) {
-  const prop = AA_PROPS[aa] || { c: 0x444444 };
-  const geo = new THREE.SphereGeometry(0.8, 24, 24);
-  const mat = new THREE.MeshPhongMaterial({ color: prop.c, emissive: prop.c, emissiveIntensity: 0.5 });
-  const mesh = new THREE.Mesh(geo, mat);
-  
-  const angle = idx * 0.4;
-  const radius = 6;
-  mesh.position.set(Math.cos(angle)*radius, idx * 1.5 - 10, Math.sin(angle)*radius);
-  group.add(mesh);
-  nodes.push(mesh);
-  
-  // Línea de conexión
-  if(nodes.length > 1) {
-    const prev = nodes[nodes.length-2];
-    const lineGeo = new THREE.BufferGeometry().setFromPoints([prev.position, mesh.position]);
-    const lineMat = new THREE.LineBasicMaterial({ color: 0x444444 });
-    group.add(new THREE.Line(lineGeo, lineMat));
-  }
-}
-
-/**
- * MOTOR DE AUDIO
- */
 let audioCtx;
-function initAudio() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playAA(aa, dur) {
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let osc = audioCtx.createOscillator();
+    let gain = audioCtx.createGain();
+    osc.type = aa === 'ERR' ? 'sawtooth' : 'sine';
+    osc.frequency.setValueAtTime(NOTES[aa] || 150, audioCtx.currentTime);
+    gain.gain.setValueAtTime(0, audioCtx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + dur);
 }
 
-function playAA(aa, duration) {
-  const prop = AA_PROPS[aa];
-  if (!prop) return;
+/** 3D ENGINE & SMART FOLDING **/
+let scene, camera, renderer, group, nodes = [];
+let lastPos = new THREE.Vector3(0,0,0);
+let direction = new THREE.Vector3(1,0,0);
 
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  
-  osc.type = document.getElementById('wave-type').value;
-  osc.frequency.setValueAtTime(prop.f, audioCtx.currentTime);
-  
-  gain.gain.setValueAtTime(0, audioCtx.currentTime);
-  gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.05);
-  gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
-  
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  
-  osc.start();
-  osc.stop(audioCtx.currentTime + duration);
+function init3D() {
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.getElementById('canvas-container').appendChild(renderer.domElement);
+    group = new THREE.Group();
+    scene.add(group);
+    camera.position.z = 40;
+    animate();
 }
 
-/**
- * LÓGICA DE SÍNTESIS
- */
-let playing = false;
-let currentStep = 0;
-
-function runSynthesis() {
-  if (!playing) return;
-  
-  const rna = document.getElementById('rna-input').value.toUpperCase().replace(/[^GUAC]/g, '');
-  const bpm = document.getElementById('bpm').value;
-  const stepTime = 60 / bpm;
-  
-  if (currentStep * 3 < rna.length) {
-    const codon = rna.substr(currentStep * 3, 3);
-    const aa = CODON_TABLE[codon] || '??';
-    
-    // Audio y 3D
-    playAA(aa, stepTime * 0.8);
-    spawnNode(currentStep, aa);
-    
-    // UI Log
-    const log = document.getElementById('log');
-    const entry = document.createElement('div');
-    entry.className = 'aa-entry active-aa';
-    entry.innerHTML = `<span>Codón: ${codon}</span> <b>${aa}</b>`;
-    log.prepend(entry);
-    document.getElementById('status').textContent = `SINTETIZANDO: ${aa}`;
-    
-    currentStep++;
-    setTimeout(runSynthesis, stepTime * 1000);
-  } else {
-    playing = false;
-    document.getElementById('status').textContent = "SÍNTESIS COMPLETADA";
-  }
+function animate() {
+    requestAnimationFrame(animate);
+    group.rotation.y += 0.002;
+    renderer.render(scene, camera);
 }
 
-document.getElementById('play-btn').onclick = () => {
-  initAudio();
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-  
-  playing = true;
-  currentStep = 0;
-  nodes = [];
-  while(group.children.length > 0) group.remove(group.children[0]);
-  document.getElementById('log').innerHTML = '';
-  runSynthesis();
+function foldNode(idx, aa) {
+    const isErr = aa === 'ERR';
+    const color = isErr ? 0xff0055 : (aa === 'STOP' ? 0xffffff : 0x00f0ff);
+    const geo = new THREE.SphereGeometry(isErr ? 1.2 : 0.7, 16, 16);
+    const mat = new THREE.MeshPhongMaterial({ color: color, emissive: color, emissiveIntensity: 0.3, wireframe: isErr });
+    const mesh = new THREE.Mesh(geo, mat);
+
+    // Algoritmo de plegado: Cambia de dirección cada 3-4 nodos
+    if (idx % 3 === 0) {
+        const axes = [new THREE.Vector3(1,0,0), new THREE.Vector3(-1,0,0), new THREE.Vector3(0,1,0), new THREE.Vector3(0,-1,0), new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,-1)];
+        direction = axes[Math.floor(Math.random() * axes.length)];
+    }
+
+    const spacing = 2.5;
+    const newPos = lastPos.clone().add(direction.clone().multiplyScalar(spacing));
+    mesh.position.copy(newPos);
+    group.add(mesh);
+    nodes.push(mesh);
+
+    if (nodes.length > 1) {
+        const lineGeo = new THREE.BufferGeometry().setFromPoints([lastPos, newPos]);
+        const lineMat = new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: 0.4 });
+        group.add(new THREE.Line(lineGeo, lineMat));
+    }
+
+    lastPos.copy(newPos);
+
+    // AJUSTE DE CÁMARA (Para que quepa en pantalla)
+    const box = new THREE.Box3().setFromObject(group);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    
+    camera.position.z = maxDim * 1.5 + 20; // Aleja la cámara según crece la proteína
+    camera.lookAt(center);
+    group.position.sub(center).multiplyScalar(0.1); // Centra suavemente el objeto
+}
+
+/** APP LOGIC **/
+let active = false;
+let step = 0;
+
+function mutate(type) {
+    let input = document.getElementById('rna-input');
+    let val = input.value.split('');
+    let pos = Math.floor(Math.random() * val.length);
+    if(type === 'point') val[pos] = ['G','U','A','C'][Math.floor(Math.random()*4)];
+    else val.splice(pos, 0, 'A');
+    input.value = val.join('');
+}
+
+function process() {
+    if(!active) return;
+    const rna = document.getElementById('rna-input').value.toUpperCase().replace(/[^GUAC]/g, '');
+    const interval = 0.4; // Segundos entre aminoácidos
+
+    if(step * 3 < rna.length) {
+        const tri = rna.substr(step * 3, 3);
+        const aa = CODONS[tri] || 'ERR';
+        playAA(aa, interval);
+        foldNode(step, aa);
+        step++;
+        setTimeout(process, interval * 1000);
+    } else { active = false; }
+}
+
+document.getElementById('start-btn').onclick = () => {
+    if(audioCtx) audioCtx.resume();
+    active = true; step = 0;
+    lastPos.set(0,0,0);
+    nodes = [];
+    while(group.children.length > 0) group.remove(group.children[0]);
+    process();
 };
 
-document.getElementById('preset-selector').onchange = (e) => {
-  if(e.target.value !== 'custom') {
-    document.getElementById('rna-input').value = PROTEIN_DB[e.target.value];
-  }
+document.getElementById('preset-select').onchange = (e) => {
+    document.getElementById('rna-input').value = SAMPLES[e.target.value];
 };
 
-// Iniciar
-init3D();
-document.getElementById('rna-input').value = PROTEIN_DB.oxytocin;
+window.onload = () => { init3D(); document.getElementById('rna-input').value = SAMPLES.oxytocin; };
 </script>
 </body>
 </html>

@@ -379,7 +379,7 @@
   }
   #protein-canvas {
     width: 100%;
-    height: 260px;
+    height: 340px;
     display: block;
     background:
       radial-gradient(circle at 50% 50%, rgba(0,240,255,0.09), transparent 42%),
@@ -627,7 +627,7 @@ const CHORD_TYPES = {nonpolar:[0,2,4], polar:[0,2,5], basic:[0,3,4], acidic:[0,1
 let audioCtx, masterGain, compressor, analyser, reverbNode, reverbGain, delayNode, delayFeedback, delayOutGain;
 let isPlaying = false, sequence = '', codonData = [], nextNoteTime = 0, currentCodonIdx = 0, scheduleTimer, activeMutationType = '';
 let currentMutatedSequence = '', compareTimers = [];
-let proteinCanvas, proteinCtx, proteinNodes = [], proteinAnimationStarted = false, proteinStartTime = 0;
+let proteinCanvas, proteinCtx, proteinNodes = [], proteinAnimationStarted = false, proteinStartTime = 0, proteinFinalTime = null;
 
 const dom = {
   input:document.getElementById('rna-input'), visual:document.getElementById('rna-visual'), preset:document.getElementById('preset-select'),
@@ -681,12 +681,14 @@ function initProteinCanvas() {
 
 function resetProteinChain() {
   proteinNodes = [];
+  proteinFinalTime = null;
   if (dom.proteinStatus) dom.proteinStatus.textContent = '0 aa';
   initProteinCanvas();
 }
 
 function updateProteinChain(aminoAcid) {
   initProteinCanvas();
+  proteinFinalTime = null;
   if (!aminoAcid || aminoAcid.type === 'stop') return;
   const index = proteinNodes.length;
   proteinNodes.push({
@@ -696,6 +698,12 @@ function updateProteinChain(aminoAcid) {
     phase: Math.random() * Math.PI * 2
   });
   if (dom.proteinStatus) dom.proteinStatus.textContent = `${proteinNodes.length} aa`;
+}
+
+function finalizeProteinChain() {
+  if (!proteinNodes.length) return;
+  proteinFinalTime = (performance.now() - proteinStartTime) / 1000;
+  if (dom.proteinStatus) dom.proteinStatus.textContent = `${proteinNodes.length} aa · plegada`;
 }
 
 function resizeProteinCanvas() {
@@ -722,21 +730,31 @@ function proteinColor(type) {
 
 function getFoldedProteinPositions(time, width, height) {
   const count = Math.max(1, proteinNodes.length);
-  const margin = Math.min(70, width * 0.1);
-  const usableWidth = Math.max(1, width - margin * 2);
-  const spacing = count > 1 ? usableWidth / (count - 1) : 0;
-  const centerY = height * 0.52;
-  const ampY = Math.min(58, height * 0.22);
-  const ampX = Math.min(28, width * 0.035);
-  const factor = 0.92;
+  const cx = width / 2;
+  const cy = height / 2;
+  const maxRadius = Math.min(width, height) * 0.46;
+  const compactness = Math.min(0.82, count / 72);
+  const lineSpan = Math.max(1, width * 0.9);
+  const lineStart = cx - lineSpan / 2;
   return proteinNodes.map((node, i) => {
-    const baseX = count === 1 ? width / 2 : margin + spacing * i;
-    const waveA = Math.sin(i * factor + time + node.phase * 0.12);
-    const waveB = Math.cos(i * factor * 0.72 + time * 0.8);
-    const foldPull = Math.sin(i * 0.37 + time * 0.45) * Math.min(34, height * 0.12);
+    const progress = count === 1 ? 0 : i / (count - 1);
+    const lineX = count === 1 ? cx : lineStart + progress * lineSpan;
+    const lineY = cy + Math.sin(i * 0.58 + time) * height * 0.2;
+    const turn = i * 0.64 + time * 0.24;
+    const spiralRadius = maxRadius * (0.28 + 0.72 * (1 - progress * 0.58));
+    const depth = Math.sin(turn * 0.9 + node.phase * 0.16);
+    const perspective = 1 + depth * 0.16;
+    const helixX = cx + Math.cos(turn + node.phase * 0.08) * spiralRadius * perspective;
+    const helixY = cy + Math.sin(turn * 1.18) * spiralRadius * 0.7 + Math.cos(i * 0.38 + time * 0.55) * height * 0.06;
+    const typeBias = { nonpolar: 0.92, polar: 1.04, basic: 1.09, acidic: 1.1 }[node.type] || 1;
+    const attractX = cx + (helixX - cx) * typeBias;
+    const attractY = cy + (helixY - cy) * typeBias;
+    const breathe = Math.sin(time * 1.2 + i * 0.4) * (4 + compactness * 5);
     return {
-      x: baseX + waveB * ampX,
-      y: centerY + waveA * ampY + Math.cos(i * 0.55) * foldPull,
+      x: lineX * (1 - compactness) + attractX * compactness + Math.cos(time + i) * breathe,
+      y: lineY * (1 - compactness) + attractY * compactness + Math.sin(time * 0.9 + i) * breathe,
+      z: depth,
+      scale: perspective,
       node
     };
   });
@@ -771,13 +789,34 @@ function animateProtein(now = performance.now()) {
   }
   proteinCtx.restore();
 
-  const positions = getFoldedProteinPositions(time, width, height);
+  const displayTime = proteinFinalTime ?? time;
+  const positions = getFoldedProteinPositions(displayTime, width, height);
   if (!positions.length) {
     proteinCtx.fillStyle = 'rgba(139,155,180,0.72)';
     proteinCtx.font = `${13 * ratio}px Outfit, sans-serif`;
     proteinCtx.textAlign = 'center';
     proteinCtx.fillText('La cadena proteica aparecerá durante la traducción', width / 2, height / 2);
     return;
+  }
+
+  for (let i = 0; i < positions.length; i++) {
+    for (let j = i + 4; j < positions.length; j += 3) {
+      const a = positions[i], b = positions[j];
+      const sameHydrophobic = a.node.type === 'nonpolar' && b.node.type === 'nonpolar';
+      const ionicPair = (a.node.type === 'basic' && b.node.type === 'acidic') || (a.node.type === 'acidic' && b.node.type === 'basic');
+      if (!sameHydrophobic && !ionicPair) continue;
+      const dx = a.x - b.x, dy = a.y - b.y;
+      const distance = Math.hypot(dx, dy);
+      if (distance > Math.min(width, height) * 0.36) continue;
+      proteinCtx.beginPath();
+      proteinCtx.moveTo(a.x, a.y);
+      proteinCtx.lineTo(b.x, b.y);
+      proteinCtx.strokeStyle = sameHydrophobic ? 'rgba(16,185,129,0.22)' : 'rgba(255,255,255,0.24)';
+      proteinCtx.lineWidth = (sameHydrophobic ? 1.15 : 1.6) * ratio;
+      proteinCtx.setLineDash([4 * ratio, 7 * ratio]);
+      proteinCtx.stroke();
+      proteinCtx.setLineDash([]);
+    }
   }
 
   for (let i = 1; i < positions.length; i++) {
@@ -798,19 +837,19 @@ function animateProtein(now = performance.now()) {
     proteinCtx.globalAlpha = 1;
   }
 
-  positions.forEach(({ x, y, node }, i) => {
+  [...positions].sort((a, b) => a.z - b.z).forEach(({ x, y, z, scale, node }, i) => {
     const age = Math.max(0, (now - node.createdAt) / 1000);
     const pulse = Math.max(0, 1 - age / 0.75);
-    const baseRadius = (8 + Math.min(5, proteinNodes.length / 18)) * ratio;
-    const radius = baseRadius * (1 + pulse * 0.55 + Math.sin(time * 3 + i) * 0.04);
+    const baseRadius = (6.8 + Math.min(3.6, proteinNodes.length / 32)) * ratio;
+    const radius = baseRadius * scale * (1 + pulse * 0.55 + Math.sin(displayTime * 3 + i) * 0.035);
     const color = proteinColor(node.type);
     proteinCtx.save();
     proteinCtx.shadowColor = color;
-    proteinCtx.shadowBlur = (14 + pulse * 24) * ratio;
+    proteinCtx.shadowBlur = (10 + Math.max(0, z) * 12 + pulse * 24) * ratio;
     proteinCtx.beginPath();
     proteinCtx.arc(x, y, radius, 0, Math.PI * 2);
     proteinCtx.fillStyle = color;
-    proteinCtx.globalAlpha = 0.88;
+    proteinCtx.globalAlpha = 0.74 + Math.max(0, z) * 0.18;
     proteinCtx.fill();
     proteinCtx.lineWidth = 1.5 * ratio;
     proteinCtx.strokeStyle = pulse > 0 ? '#ffffff' : 'rgba(255,255,255,0.32)';
@@ -964,7 +1003,7 @@ function highlightCodon(idx) {
 
 function scheduleNext() {
   while (nextNoteTime < audioCtx.currentTime + 0.1) {
-    if (currentCodonIdx >= codonData.length) { stopSequence(); return; }
+    if (currentCodonIdx >= codonData.length) { finalizeProteinChain(); stopSequence(); return; }
     const codon = codonData[currentCodonIdx];
     playCodon(codon, nextNoteTime);
     const idx = currentCodonIdx;
@@ -982,6 +1021,7 @@ function scheduleNext() {
       setTimeout(() => {
         if (isPlaying) {
           stopSequence();
+          finalizeProteinChain();
           dom.statStatus.textContent = 'STOP prematuro';
         }
       }, Math.max(0, (nextNoteTime - audioCtx.currentTime) * 1000));

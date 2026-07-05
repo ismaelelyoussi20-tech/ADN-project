@@ -922,13 +922,13 @@ function playSynth(freq, time, dur, type, velocity = 1) {
     osc.type = 'sine';
     mod.type = 'sine';
     mod.frequency.value = freq * 2;
-    modGain.gain.setValueAtTime(freq * (activeMutationType === 'silent' ? 1.2 : 3), time);
+    modGain.gain.setValueAtTime(freq * 3, time);
     modGain.gain.exponentialRampToValueAtTime(10, time + dur * 0.5);
     mod.connect(modGain);
     modGain.connect(osc.frequency);
     mod.start(time);
     mod.stop(time + dur + 0.1);
-    filter.frequency.value = activeMutationType === 'silent' ? 2600 : 5000;
+    filter.frequency.value = 5000;
   } else {
     osc.type = type;
     filter.frequency.setValueAtTime(freq * 6, time);
@@ -977,13 +977,9 @@ function playCodon(codon, time) {
   const rootKey = dom.root.value, scaleName = dom.scale.value, synthType = dom.synth.value;
   const stepDur = ((60 / Number(dom.bpm.value)) * Number(dom.div.value) * 4) * 0.9;
   for (let i = 0; i < 3; i++) {
-    const freq = getFreq(rootKey, scaleName, 1, BASE_DEGREES[codon.triplet[i]]);
+    const base = codon.triplet[i];
+    const freq = getFreq(rootKey, scaleName, 1, BASE_DEGREES[base]);
     playSynth(freq, time + i * (stepDur / 3), stepDur / 3, synthType, 1.0);
-  }
-  if (codon.type === 'stop') {
-    playSynth(50, time, Math.min(0.22, stepDur), 'square', 2.0);
-  } else {
-    CHORD_TYPES[codon.type].forEach(offset => playPad(getFreq(rootKey, scaleName, -1, offset), time, stepDur, 0.4));
   }
 }
 
@@ -1017,16 +1013,6 @@ function scheduleNext() {
     const stepDuration = (60 / Number(dom.bpm.value)) * Number(dom.div.value) * 4;
     nextNoteTime += stepDuration;
     currentCodonIdx++;
-    if (activeMutationType === 'nonsense' && codon.type === 'stop') {
-      setTimeout(() => {
-        if (isPlaying) {
-          stopSequence();
-          finalizeProteinChain();
-          dom.statStatus.textContent = 'STOP prematuro';
-        }
-      }, Math.max(0, (nextNoteTime - audioCtx.currentTime) * 1000));
-      return;
-    }
   }
   scheduleTimer = setTimeout(scheduleNext, 25);
 }
@@ -1285,7 +1271,7 @@ function renderSequenceWav(seq) {
         samples[start + i] += Math.sin(2 * Math.PI * freq * t) * env * 0.24;
       }
     }
-    return activeMutationType === 'nonsense' && codon.type === 'stop';
+    return false;
   });
   return wavFromSamples(samples, sampleRate);
 }

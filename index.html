@@ -433,16 +433,11 @@
     </div>
 
     <div class="flex-row">
+      <select id="root-note" hidden>
+        <option value="F#" selected>Fa#</option>
+      </select>
       <div class="control-group">
-        <label>Tono Base</label>
-        <select id="root-note">
-          <option value="C">Do</option><option value="C#">Do#</option><option value="D">Re</option><option value="D#">Re#</option>
-          <option value="E">Mi</option><option value="F">Fa</option><option value="F#" selected>Fa#</option><option value="G">Sol</option>
-          <option value="G#">Sol#</option><option value="A">La</option><option value="A#">La#</option><option value="B">Si</option>
-        </select>
-      </div>
-      <div class="control-group">
-        <label>Escala</label>
+        <label>Escala musical decorativa</label>
         <select id="scale-type">
           <option value="major">Mayor</option>
           <option value="minor">Menor Natural</option>
@@ -622,6 +617,12 @@ const SCALES = {
 };
 const NOTES = {C:0,'C#':1,D:2,'D#':3,E:4,F:5,'F#':6,G:7,'G#':8,A:9,'A#':10,B:11};
 const BASE_DEGREES = {G:0,C:2,A:4,U:6};
+const FIXED_BASE_MIDI = {A:69, C:60, G:67, U:64};
+
+function getFixedBaseFreq(base) {
+  const midiNote = FIXED_BASE_MIDI[base] ?? 60;
+  return 440 * Math.pow(2, (midiNote - 69) / 12);
+}
 const CHORD_TYPES = {nonpolar:[0,2,4], polar:[0,2,5], basic:[0,3,4], acidic:[0,1,4], stop:[]};
 
 let audioCtx, masterGain, compressor, analyser, reverbNode, reverbGain, delayNode, delayFeedback, delayOutGain;
@@ -974,11 +975,11 @@ function playPad(freq, time, dur, velocity = 0.5) {
 }
 
 function playCodon(codon, time) {
-  const rootKey = dom.root.value, scaleName = dom.scale.value, synthType = dom.synth.value;
+  const synthType = dom.synth.value;
   const stepDur = ((60 / Number(dom.bpm.value)) * Number(dom.div.value) * 4) * 0.9;
   for (let i = 0; i < 3; i++) {
     const base = codon.triplet[i];
-    const freq = getFreq(rootKey, scaleName, 1, BASE_DEGREES[base]);
+    const freq = getFixedBaseFreq(base);
     playSynth(freq, time + i * (stepDur / 3), stepDur / 3, synthType, 1.0);
   }
 }
@@ -1219,7 +1220,7 @@ function playCompare() {
     codons.forEach((codon, idx) => {
       compareTimers.push(setTimeout(() => {
         codon.triplet.split('').forEach((base, j) => {
-          playSynth(getFreq(dom.root.value, dom.scale.value, 1, BASE_DEGREES[base]) * shift, audioCtx.currentTime + j * 0.07, 0.12, dom.synth.value, velocity);
+          playSynth(getFixedBaseFreq(base), audioCtx.currentTime + j * 0.07, 0.12, dom.synth.value, velocity);
         });
       }, idx * step * 1000));
     });
@@ -1263,7 +1264,7 @@ function renderSequenceWav(seq) {
   const samples = new Float32Array(totalSamples);
   codons.some((codon, codonIndex) => {
     for (let baseIndex = 0; baseIndex < 3; baseIndex++) {
-      const freq = getFreq(dom.root.value, dom.scale.value, 1, BASE_DEGREES[codon.triplet[baseIndex]]);
+      const freq = getFixedBaseFreq(codon.triplet[baseIndex]);
       const start = Math.floor((codonIndex * codonDur + baseIndex * codonDur / 3) * sampleRate);
       const len = Math.floor((codonDur / 3) * sampleRate);
       for (let i = 0; i < len && start + i < samples.length; i++) {
